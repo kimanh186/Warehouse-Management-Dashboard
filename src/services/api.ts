@@ -1,5 +1,5 @@
-// const API_URL = "https://warehousemanagement-2ga9.onrender.com/api";
-const API_URL = "https://localhost:7000/api";
+const API_URL = "https://warehousemanagement-2ga9.onrender.com/api";
+// const API_URL = "https://localhost:7000/api";
 async function handleResponse(response: Response) {
     if (!response.ok) {
         const error = await response.text();
