@@ -461,7 +461,7 @@ export default function Products() {
             <td className="px-6 py-4">
               {product.imageUrl ? (
                 <img
-                  src={`https://localhost:7000${product.imageUrl}`}
+                  src={`https://warehousemanagement-2ga9.onrender.com${product.imageUrl}`}
                   alt="product"
                   className="w-12 h-12 object-cover rounded"
                 />
