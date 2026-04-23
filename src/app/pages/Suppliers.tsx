@@ -22,6 +22,82 @@ const columns = [
   { key: "phone", label: "Số điện thoại", width: "20%" },
   { key: "actions", label: "Hành động", width: "10%" },
 ];
+function SupplierForm({
+  formData,
+  setFormData,
+  handleSave,
+  closeModal,
+}: any) {
+  return (
+    <div className="p-6 space-y-4">
+      <div className="grid grid-cols-1 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Mã nhà cung cấp
+          </label>
+          <input
+            type="text"
+            value={formData.id || "Tự động"}
+            disabled
+            className="w-full px-4 py-2 border border-border rounded-lg bg-gray-100"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Tên nhà cung cấp
+          </label>
+          <input
+            type="text"
+            value={formData.supplierName}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                supplierName: e.target.value,
+              })
+            }
+            className="w-full px-4 py-2 border border-border rounded-lg"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Số điện thoại
+          </label>
+          <input
+            type="text"
+            value={formData.phone}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                phone: e.target.value,
+              })
+            }
+            className="w-full px-4 py-2 border border-border rounded-lg"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <button
+          type="button"
+          onClick={closeModal}
+          className="flex-1 px-4 py-2 border border-border rounded-lg"
+        >
+          Hủy
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSave}
+          className="flex-1 px-4 py-2 bg-primary text-white rounded-lg"
+        >
+          Lưu
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -75,103 +151,56 @@ export default function Suppliers() {
   };
 
   const confirmDelete = async () => {
-    if (!selectedSupplier) return;
+  if (!selectedSupplier) return;
 
-    try {
-      await deleteSupplier(selectedSupplier.id);
-      await loadSuppliers();
-      setIsDeleteDialogOpen(false);
-    } catch (error) {
-      console.error(error);
-      alert("Không thể xóa nhà cung cấp");
-    }
-  };
+  try {
+    await deleteSupplier(selectedSupplier.id);
+    await loadSuppliers();
+
+    alert(" Xóa nhà cung cấp thành công");
+
+    setIsDeleteDialogOpen(false);
+  } catch (error: any) {
+    alert(error?.message || " Không thể xóa nhà cung cấp");
+  }
+};
 
   const handleSave = async () => {
-    try {
-      if (isAddModalOpen) {
-        await createSupplier({
-          supplierName: formData.supplierName,
-          phone: formData.phone,
-        });
-      }
+  if (!formData.supplierName.trim()) {
+    alert(" Vui lòng nhập tên nhà cung cấp");
+    return;
+  }
 
-      if (isEditModalOpen) {
-        await updateSupplier(formData.id, {
-          id: formData.id,
-          supplierName: formData.supplierName,
-          phone: formData.phone,
-        });
-      }
+  try {
+    if (isAddModalOpen) {
+      await createSupplier({
+        supplierName: formData.supplierName,
+        phone: formData.phone,
+      });
 
-      await loadSuppliers();
-
-      setIsAddModalOpen(false);
-      setIsEditModalOpen(false);
-    } catch (error) {
-      console.error(error);
-      alert("Không thể lưu nhà cung cấp");
+      alert(" Thêm nhà cung cấp thành công");
     }
-  };
 
-  const SupplierForm = () => (
-    <div className="p-6 space-y-4">
-      <div className="grid grid-cols-1 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">Mã nhà cung cấp</label>
-          <input
-            type="text"
-            value={formData.id || "Tự động"}
-            disabled
-            className="w-full px-4 py-2 border border-border rounded-lg bg-gray-100"
-          />
-        </div>
+    if (isEditModalOpen) {
+      await updateSupplier(formData.id, {
+        id: formData.id,
+        supplierName: formData.supplierName,
+        phone: formData.phone,
+      });
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Tên nhà cung cấp</label>
-          <input
-            type="text"
-            value={formData.supplierName}
-            onChange={(e) =>
-              setFormData({ ...formData, supplierName: e.target.value })
-            }
-            className="w-full px-4 py-2 border border-border rounded-lg"
-          />
-        </div>
+      alert(" Cập nhật nhà cung cấp thành công");
+    }
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Số điện thoại</label>
-          <input
-            type="text"
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-            className="w-full px-4 py-2 border border-border rounded-lg"
-          />
-        </div>
-      </div>
+    await loadSuppliers();
 
-      <div className="flex gap-3 pt-4">
-        <button
-          onClick={() => {
-            setIsAddModalOpen(false);
-            setIsEditModalOpen(false);
-          }}
-          className="flex-1 px-4 py-2 border border-border rounded-lg"
-        >
-          Hủy
-        </button>
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+  } catch (error: any) {
+    alert(error?.message || " Không thể lưu nhà cung cấp");
+  }
+};
 
-        <button
-          onClick={handleSave}
-          className="flex-1 px-4 py-2 bg-primary text-white rounded-lg"
-        >
-          Lưu
-        </button>
-      </div>
-    </div>
-  );
+
 
   return (
     <div className="space-y-6">
@@ -219,7 +248,15 @@ export default function Suppliers() {
         onClose={() => setIsAddModalOpen(false)}
         title="Thêm nhà cung cấp mới"
       >
-        <SupplierForm />
+        <SupplierForm
+          formData={formData}
+          setFormData={setFormData}
+          handleSave={handleSave}
+          closeModal={() => {
+            setIsAddModalOpen(false);
+            setIsEditModalOpen(false);
+          }}
+        />
       </Modal>
 
       <Modal
@@ -227,7 +264,15 @@ export default function Suppliers() {
         onClose={() => setIsEditModalOpen(false)}
         title="Chỉnh sửa nhà cung cấp"
       >
-        <SupplierForm />
+        <SupplierForm
+          formData={formData}
+          setFormData={setFormData}
+          handleSave={handleSave}
+          closeModal={() => {
+            setIsAddModalOpen(false);
+            setIsEditModalOpen(false);
+          }}
+        />
       </Modal>
 
       <ConfirmDialog

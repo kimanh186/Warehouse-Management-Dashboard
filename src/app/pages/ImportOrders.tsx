@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 import Table from "../components/ui/Table";
 import Modal from "../components/ui/Modal";
+import { createImportOrder, getImportOrders, getProducts, getSuppliers } from "../../services/api";
+import { toast } from "sonner";
 
 interface Supplier {
   id: number;
@@ -31,17 +33,19 @@ interface ImportOrder {
 const columns = [
   { key: "id", label: "Mã phiếu", width: "15%" },
   { key: "createdDate", label: "Ngày tạo", width: "20%" },
-  { key: "supplier", label: "Nhà cung cấp", width: "25%" },
+  { key: "products", label: "Tên sản phẩm", width: "25%" },
   { key: "quantity", label: "Tổng SL", width: "15%" },
   { key: "money", label: "Tổng tiền", width: "15%" },
   { key: "actions", label: "Hành động", width: "10%" },
 ];
 
 export default function ImportOrders() {
+  const [search, setSearch] = useState("");
   const [importOrders, setImportOrders] = useState<ImportOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<ImportOrder | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | "">("");
 
@@ -54,25 +58,48 @@ export default function ImportOrders() {
   ]);
 
   useEffect(() => {
-    fetch("https://warehousemanagement-2ga9.onrender.com/api/ImportOrders")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("ImportOrders:", data);
+    const loadData = async () => {
+      try {
+        const orders = await getImportOrders();
+        setImportOrders(Array.isArray(orders) ? orders : orders.data ?? []);
 
-        setImportOrders(Array.isArray(data) ? data : data.data ?? []);
-      })
-      .catch((err) => console.error("Lỗi lấy phiếu nhập:", err));
+        const suppliersData = await getSuppliers();
+        setSuppliers(suppliersData);
 
-    fetch("https://warehousemanagement-2ga9.onrender.com/api/Suppliers")
-      .then((res) => res.json())
-      .then((data) => setSuppliers(data))
-      .catch((err) => console.error("Lỗi lấy nhà cung cấp:", err));
+        const productsData = await getProducts();
+        setProducts(productsData);
+      } catch (err) {
+        console.error(err);
+      }
+    };
 
-    fetch("https://warehousemanagement-2ga9.onrender.com/api/Products")
-      .then((res) => res.json())
-      .then((data) => setProducts(data))
-      .catch((err) => console.error("Lỗi lấy sản phẩm:", err));
+    loadData();
   }, []);
+
+  const filteredOrders = importOrders.filter((order) => {
+    const keyword = search.toLowerCase();
+
+    if (`pn${order.id}`.toLowerCase().includes(keyword)) return true;
+
+    const productNames = (order.details ?? [])
+      .map((item) => {
+        const product = products.find(
+          (p) => p.productCode === item.productCode
+        );
+        return product?.productName ?? "";
+      })
+      .join(" ")
+      .toLowerCase();
+
+    if (productNames.includes(keyword)) return true;
+
+    if (
+      order.supplier?.supplierName?.toLowerCase().includes(keyword)
+    )
+      return true;
+
+    return false;
+  });
 
   const handleAddItem = () => {
     setOrderItems([
@@ -101,58 +128,192 @@ export default function ImportOrders() {
     };
     setOrderItems(updated);
   };
+  const handleViewDetail = (order: ImportOrder) => {
+    setSelectedOrder(order);
+    setIsDetailModalOpen(true);
+  };
 
   const handleSaveOrder = async () => {
-    if (selectedSupplierId === "") {
-      alert("Vui lòng chọn nhà cung cấp");
-      return;
-    }
+  if (selectedSupplierId === "") {
+    alert("⚠️ Vui lòng chọn nhà cung cấp");
+    return;
+  }
 
-    if (orderItems.some((item) => !item.productCode || item.quantity <= 0)) {
-      alert("Vui lòng nhập đầy đủ sản phẩm và số lượng");
-      return;
-    }
+  if (orderItems.some((item) => !item.productCode || item.quantity <= 0)) {
+    alert("⚠️ Vui lòng nhập đầy đủ sản phẩm và số lượng");
+    return;
+  }
 
-    const body = {
-      supplierId: selectedSupplierId,
-      details: orderItems,
-    };
+  const body = {
+    supplierId: selectedSupplierId,
+    details: orderItems,
+  };
 
-    try {
-      const response = await fetch(
-        "https://warehousemanagement-2ga9.onrender.com/api/ImportOrders",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
+  try {
+    await createImportOrder(body);
 
-      if (!response.ok) {
-        const error = await response.text();
-        alert(error);
-        return;
-      }
+    alert("🎉 Tạo phiếu nhập thành công"); // 🔥 THÊM DÒNG NÀY
 
-      const result = await response.json();
+    const refreshed = await getImportOrders();
 
-      setImportOrders([...importOrders, result]);
+    setImportOrders(
+      Array.isArray(refreshed) ? refreshed : refreshed.data ?? []
+    );
 
-      setIsCreateModalOpen(false);
-      setSelectedSupplierId("");
-      setOrderItems([
-        {
-          productCode: "",
-          quantity: 0,
-          importPrice: 0,
-        },
-      ]);
-    } catch (error) {
-      console.error(error);
-      alert("Không thể tạo phiếu nhập");
-    }
+    setIsCreateModalOpen(false);
+    setSelectedSupplierId("");
+    setOrderItems([
+      {
+        productCode: "",
+        quantity: 0,
+        importPrice: 0,
+      },
+    ]);
+  } catch (error: any) {
+    alert(error?.message || " Không thể tạo phiếu nhập");
+  }
+};
+
+  const handlePrintOrder = () => {
+    if (!selectedOrder) return;
+    alert(" Đang mở phiếu để in...");
+
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+
+    if (!printWindow) return;
+
+    const rows = (selectedOrder.details ?? [])
+      .map((item, index) => {
+        const product = products.find(
+          (p) => p.productCode === item.productCode
+        );
+
+        return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${item.productCode}</td>
+          <td>${product?.productName ?? "Không tìm thấy"}</td>
+          <td>${item.quantity}</td>
+          <td>${item.importPrice.toLocaleString()} VNĐ</td>
+          <td>${(item.quantity * item.importPrice).toLocaleString()} VNĐ</td>
+        </tr>
+      `;
+      })
+      .join("");
+
+    const totalQuantity = (selectedOrder.details ?? []).reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+
+    const totalMoney = (selectedOrder.details ?? []).reduce(
+      (sum, item) => sum + item.quantity * item.importPrice,
+      0
+    );
+
+    printWindow.document.write(`
+    <html>
+      <head>
+        <title>Phiếu nhập PN${selectedOrder.id}</title>
+
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 32px;
+            color: #111;
+          }
+
+          .header {
+            text-align: center;
+            margin-bottom: 24px;
+          }
+
+          .header h1 {
+            margin: 0;
+            font-size: 26px;
+          }
+
+          .info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+          }
+
+          .info p {
+            margin: 0;
+            line-height: 1.8;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+
+          th,
+          td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+          }
+
+          th {
+            background: #f3f4f6;
+          }
+
+          .footer {
+            margin-top: 24px;
+            text-align: right;
+            line-height: 1.8;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="header">
+          <h1>PHIẾU NHẬP KHO</h1>
+          <p>PN${selectedOrder.id}</p>
+        </div>
+
+        <div class="info">
+          <p><strong>Ngày tạo:</strong> ${new Date(
+      selectedOrder.createdDate
+    ).toLocaleDateString("vi-VN")}</p>
+
+          <p><strong>Nhà cung cấp:</strong> ${selectedOrder.supplier?.supplierName ?? ""
+      }</p>
+        </div>
+        
+
+        <table>
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Mã SP</th>
+              <th>Tên sản phẩm</th>
+              <th>Số lượng</th>
+              <th>Giá nhập</th>
+              <th>Thành tiền</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <div>Tổng số lượng: ${totalQuantity}</div>
+          <div>Tổng tiền: ${totalMoney.toLocaleString()} VNĐ</div>
+        </div>
+      </body>
+    </html>
+  `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   return (
@@ -174,11 +335,20 @@ export default function ImportOrders() {
           <Plus className="w-5 h-5" />
           Tạo phiếu nhập
         </button>
+
       </div>
+      <input
+        type="text"
+        placeholder=" Tìm mã phiếu, sản phẩm..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="px-4 py-2 border rounded-lg w-72"
+      />
+
 
       <Table
         columns={columns}
-        data={importOrders}
+        data={filteredOrders}
         renderRow={(order) => (
           <tr key={order.id} className="hover:bg-muted/50">
             <td className="px-6 py-4 text-sm font-medium text-foreground">
@@ -190,7 +360,15 @@ export default function ImportOrders() {
             </td>
 
             <td className="px-6 py-4 text-sm text-foreground">
-              {order.supplier?.supplierName}
+              {(order.details ?? [])
+                .map((item: ImportOrderItem) => {
+                  const product = products.find(
+                    (p) => p.productCode === item.productCode
+                  );
+
+                  return product?.productName ?? item.productCode;
+                })
+                .join(", ")}
             </td>
 
             <td className="px-6 py-4 text-sm text-foreground">
@@ -201,7 +379,7 @@ export default function ImportOrders() {
             </td>
 
             <td className="px-6 py-4 text-sm font-medium text-foreground">
-              {order.details
+              {(order.details ?? [])
                 .reduce(
                   (sum: number, item: ImportOrderItem) =>
                     sum + item.quantity * item.importPrice,
@@ -212,7 +390,10 @@ export default function ImportOrders() {
             </td>
 
             <td className="px-6 py-4">
-              <button className="text-primary hover:underline text-sm">
+              <button
+                onClick={() => handleViewDetail(order)}
+                className="text-primary hover:underline text-sm"
+              >
                 Chi tiết
               </button>
             </td>
@@ -303,16 +484,17 @@ export default function ImportOrders() {
                       </label>
 
                       <input
-                        type="number"
-                        min="1"
-                        value={item.quantity || ""}
-                        onChange={(e) =>
+                        type="text"
+                        value={item.quantity === 0 ? "" : item.quantity}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, ""); // chỉ cho nhập số
+
                           handleItemChange(
                             index,
                             "quantity",
-                            Number(e.target.value)
-                          )
-                        }
+                            value === "" ? 0 : Number(value)
+                          );
+                        }}
                         className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                       />
                     </div>
@@ -393,6 +575,107 @@ export default function ImportOrders() {
               className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
             >
               Lưu phiếu nhập
+            </button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        title={`Chi tiết phiếu nhập PN${selectedOrder?.id ?? ""}`}
+        size="lg"
+      >
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Mã phiếu</p>
+              <p className="font-medium">PN{selectedOrder?.id}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Ngày tạo</p>
+              <p className="font-medium">
+                {selectedOrder?.createdDate
+                  ? new Date(selectedOrder.createdDate).toLocaleDateString("vi-VN")
+                  : ""}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Nhà cung cấp</p>
+              <p className="font-medium">
+                {selectedOrder?.supplier?.supplierName}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Tổng tiền</p>
+              <p className="font-medium text-primary">
+                {(selectedOrder?.details ?? [])
+                  .reduce(
+                    (sum, item) => sum + item.quantity * item.importPrice,
+                    0
+                  )
+                  .toLocaleString()} VNĐ
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-medium mb-3">Danh sách sản phẩm</h3>
+
+            <div className="border border-border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left px-4 py-3">Mã SP</th>
+                    <th className="text-left px-4 py-3">Tên sản phẩm</th>
+                    <th className="text-left px-4 py-3">Số lượng</th>
+                    <th className="text-left px-4 py-3">Giá nhập</th>
+                    <th className="text-left px-4 py-3">Thành tiền</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {(selectedOrder?.details ?? []).map((item, index) => {
+                    const product = products.find(
+                      (p) => p.productCode === item.productCode
+                    );
+
+                    return (
+                      <tr key={index} className="border-t border-border">
+                        <td className="px-4 py-3">{item.productCode}</td>
+                        <td className="px-4 py-3">
+                          {product?.productName ?? "Không tìm thấy"}
+                        </td>
+                        <td className="px-4 py-3">{item.quantity}</td>
+                        <td className="px-4 py-3">
+                          {item.importPrice.toLocaleString()} VNĐ
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          {(item.quantity * item.importPrice).toLocaleString()} VNĐ
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => handlePrintOrder()}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              In phiếu
+            </button>
+
+            <button
+              onClick={() => setIsDetailModalOpen(false)}
+              className="px-4 py-2 border border-border rounded-lg hover:bg-secondary transition-colors"
+            >
+              Đóng
             </button>
           </div>
         </div>

@@ -8,6 +8,7 @@ import {
   Upload,
   FileText,
   Warehouse,
+  ShoppingBag ,
 } from "lucide-react";
 
 const menuItems = [
