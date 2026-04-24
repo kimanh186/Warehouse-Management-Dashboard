@@ -14,6 +14,7 @@ interface Product {
   productCode: string;
   productName: string;
   quantity: number;
+  supplierId: number;
 }
 
 interface ImportOrderItem {
@@ -93,6 +94,20 @@ export default function ImportOrders() {
       alert(err.message || "Không thể xóa");
     }
   };
+  useEffect(() => {
+    setOrderItems([
+      {
+        productCode: "",
+        quantity: 0,
+        importPrice: 0,
+      },
+    ]);
+  }, [selectedSupplierId]);
+
+  const filteredProducts =
+    selectedSupplierId === ""
+      ? []
+      : products.filter(p => p.supplierId === Number(selectedSupplierId));
 
   const filteredOrders = importOrders.filter((order) => {
     const keyword = search.toLowerCase();
@@ -170,7 +185,7 @@ export default function ImportOrders() {
     try {
       await createImportOrder(body);
 
-      alert(" Tạo phiếu nhập thành công"); 
+      alert(" Tạo phiếu nhập thành công");
 
       const refreshed = await getImportOrders();
 
@@ -512,7 +527,7 @@ export default function ImportOrders() {
                       >
                         <option value="">Chọn sản phẩm</option>
 
-                        {products.map((product) => (
+                        {filteredProducts.map((product) => (
                           <option
                             key={product.productCode}
                             value={product.productCode}

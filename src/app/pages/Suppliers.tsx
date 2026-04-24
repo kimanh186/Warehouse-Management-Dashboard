@@ -151,54 +151,54 @@ export default function Suppliers() {
   };
 
   const confirmDelete = async () => {
-  if (!selectedSupplier) return;
+    if (!selectedSupplier) return;
 
-  try {
-    await deleteSupplier(selectedSupplier.id);
-    await loadSuppliers();
+    try {
+      await deleteSupplier(selectedSupplier.id);
+      await loadSuppliers();
 
-    alert(" Xóa nhà cung cấp thành công");
+      alert(" Xóa nhà cung cấp thành công");
 
-    setIsDeleteDialogOpen(false);
-  } catch (error: any) {
-    alert(error?.message || " Không thể xóa nhà cung cấp");
-  }
-};
+      setIsDeleteDialogOpen(false);
+    } catch (error: any) {
+      alert(error?.message || " Không thể xóa nhà cung cấp");
+    }
+  };
 
   const handleSave = async () => {
-  if (!formData.supplierName.trim()) {
-    alert(" Vui lòng nhập tên nhà cung cấp");
-    return;
-  }
-
-  try {
-    if (isAddModalOpen) {
-      await createSupplier({
-        supplierName: formData.supplierName,
-        phone: formData.phone,
-      });
-
-      alert(" Thêm nhà cung cấp thành công");
+    if (!formData.supplierName.trim()) {
+      alert(" Vui lòng nhập tên nhà cung cấp");
+      return;
     }
 
-    if (isEditModalOpen) {
-      await updateSupplier(formData.id, {
-        id: formData.id,
-        supplierName: formData.supplierName,
-        phone: formData.phone,
-      });
+    try {
+      if (isAddModalOpen) {
+        await createSupplier({
+          supplierName: formData.supplierName,
+          phone: formData.phone,
+        });
 
-      alert(" Cập nhật nhà cung cấp thành công");
+        alert(" Thêm nhà cung cấp thành công");
+      }
+
+      if (isEditModalOpen) {
+        await updateSupplier(formData.id, {
+          id: formData.id,
+          supplierName: formData.supplierName,
+          phone: formData.phone,
+        });
+
+        alert(" Cập nhật nhà cung cấp thành công");
+      }
+
+      await loadSuppliers();
+
+      setIsAddModalOpen(false);
+      setIsEditModalOpen(false);
+    } catch (error: any) {
+      alert(error?.message || " Không thể lưu nhà cung cấp");
     }
-
-    await loadSuppliers();
-
-    setIsAddModalOpen(false);
-    setIsEditModalOpen(false);
-  } catch (error: any) {
-    alert(error?.message || " Không thể lưu nhà cung cấp");
-  }
-};
+  };
 
 
 

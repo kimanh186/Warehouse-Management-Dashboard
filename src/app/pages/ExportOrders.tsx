@@ -45,6 +45,7 @@ export default function ExportOrders() {
   const [selectedOrder, setSelectedOrder] = useState<ExportOrder | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("internal");
+  const [inputValues, setInputValues] = useState<string[]>([""]);
   const [orderItems, setOrderItems] = useState<ExportOrderItem[]>([
     {
       productCode: "",
@@ -54,6 +55,11 @@ export default function ExportOrders() {
   const handleViewDetail = (order: ExportOrder) => {
     setSelectedOrder(order);
     setIsDetailModalOpen(true);
+  };
+  const handleInputChange = (index: number, value: string) => {
+    const updated = [...inputValues];
+    updated[index] = value;
+    setInputValues(updated);
   };
 
 
@@ -76,21 +82,21 @@ export default function ExportOrders() {
   }, []);
 
 
- const handleDelete = async (id: number) => {
-  if (!confirm("Xóa phiếu này?")) return;
+  const handleDelete = async (id: number) => {
+    if (!confirm("Xóa phiếu này?")) return;
 
-  try {
-    await deleteExportOrder(id);
+    try {
+      await deleteExportOrder(id);
 
-    setExportOrders((prev) =>
-      prev.filter((o) => o.id !== id)
-    );
+      setExportOrders((prev) =>
+        prev.filter((o) => o.id !== id)
+      );
 
-    alert(" Xóa phiếu xuất thành công"); 
-  } catch (error: any) {
-    alert(error.message || "Không thể xóa phiếu");
-  }
-};
+      alert(" Xóa phiếu xuất thành công");
+    } catch (error: any) {
+      alert(error.message || "Không thể xóa phiếu");
+    }
+  };
 
   const handleAddItem = () => {
     setOrderItems([
@@ -100,10 +106,12 @@ export default function ExportOrders() {
         quantity: 0,
       },
     ]);
+    setInputValues([...inputValues, ""]);
   };
 
   const handleRemoveItem = (index: number) => {
     setOrderItems(orderItems.filter((_, i) => i !== index));
+    setInputValues(inputValues.filter((_, i) => i !== index));
   };
 
   const handleItemChange = (
@@ -120,30 +128,30 @@ export default function ExportOrders() {
   };
 
   const handleSaveOrder = async () => {
-  const body = {
-    reason: selectedType,
-    details: orderItems,
+    const body = {
+      reason: selectedType,
+      details: orderItems,
+    };
+
+    try {
+      const result = await createExportOrder(body);
+
+      setExportOrders((prev) => [
+        ...prev,
+        result.data ?? result,
+      ]);
+
+      alert("Tạo phiếu xuất thành công");
+
+      setIsCreateModalOpen(false);
+      setSelectedType("internal");
+      setOrderItems([
+        { productCode: "", quantity: 0 },
+      ]);
+    } catch (error: any) {
+      alert(error.message || "Không thể tạo phiếu xuất");
+    }
   };
-
-  try {
-    const result = await createExportOrder(body);
-
-    setExportOrders((prev) => [
-      ...prev,
-      result.data ?? result,
-    ]);
-
-    alert("Tạo phiếu xuất thành công"); 
-
-    setIsCreateModalOpen(false);
-    setSelectedType("internal");
-    setOrderItems([
-      { productCode: "", quantity: 0 },
-    ]);
-  } catch (error: any) {
-    alert(error.message || "Không thể tạo phiếu xuất");
-  }
-};
 
   const getTypeLabel = (reason: string) => {
     switch (reason) {
@@ -197,20 +205,20 @@ export default function ExportOrders() {
     }
 
     try {
-  await markExportOrderPrinted(selectedOrder.id);
+      await markExportOrderPrinted(selectedOrder.id);
 
-  alert(" Đã đánh dấu phiếu đã in");
+      alert(" Đã đánh dấu phiếu đã in");
 
-  setExportOrders(prev =>
-    prev.map(o =>
-      o.id === selectedOrder.id
-        ? { ...o, isPrinted: true }
-        : o
-    )
-  );
-} catch (err: any) {
-  alert(err.message || "Lỗi khi in phiếu");
-}
+      setExportOrders(prev =>
+        prev.map(o =>
+          o.id === selectedOrder.id
+            ? { ...o, isPrinted: true }
+            : o
+        )
+      );
+    } catch (err: any) {
+      alert(err.message || "Lỗi khi in phiếu");
+    }
 
     const rows = (selectedOrder.details ?? [])
       .map((item, index) => {
@@ -284,16 +292,15 @@ export default function ExportOrders() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* 🔍 search */}
+
           <input
             type="text"
-            placeholder="🔍 Tìm PX, loại, sản phẩm..."
+            placeholder=" Tìm PX, loại, sản phẩm..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="px-4 py-2 border rounded-lg w-72"
           />
 
-          {/* ➕ button */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
@@ -415,28 +422,46 @@ export default function ExportOrders() {
                         Sản phẩm
                       </label>
 
-                      <select
-                        value={item.productCode}
-                        onChange={(e) =>
-                          handleItemChange(
-                            index,
-                            "productCode",
-                            e.target.value
-                          )
-                        }
-                        className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                      >
-                        <option value="">Chọn sản phẩm</option>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Nhập sản phẩm..."
+                          value={inputValues[index] || ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            handleInputChange(index, value);
+                          }}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
 
-                        {products.map((product) => (
-                          <option
-                            key={product.productCode}
-                            value={product.productCode}
-                          >
-                            {product.productName}
-                          </option>
-                        ))}
-                      </select>
+                        {inputValues[index] && (
+                          <div className="absolute z-10 bg-white border w-full mt-1 max-h-40 overflow-y-auto rounded-lg shadow">
+                            {products
+                              .filter(p =>
+                                p.productName.toLowerCase().includes(
+                                  inputValues[index].toLowerCase()
+                                )
+                              )
+                              .slice(0, 5)
+                              .map(product => (
+                                <div
+                                  key={product.productCode}
+                                  onClick={() => {
+                                    handleItemChange(index, "productCode", product.productCode);
+                                    handleInputChange(index, product.productName);
+
+                                    const updated = [...inputValues];
+                                    updated[index] = product.productName;
+                                    setInputValues(updated);
+                                  }}
+                                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                >
+                                  {product.productName}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div>
