@@ -119,21 +119,7 @@ function ProductForm({
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Số lượng</label>
-          <input
-            type="text"
-            value={formData.quantity}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, "");
-              setFormData({
-                ...formData,
-                quantity: value === "" ? 0 : Number(value),
-              });
-            }}
-            className="w-full px-4 py-2 border border-border rounded-lg"
-          />
-        </div>
+        
 
         <div>
           <label className="block text-sm font-medium mb-2">Giá nhập</label>
@@ -377,18 +363,13 @@ export default function Products() {
   if (formData.supplierId === 0) {
     alert(" Vui lòng chọn nhà cung cấp");
     return;
-  }
-
-  if (formData.quantity <= 0) {
-    alert(" Số lượng phải > 0");
-    return;
+  
   }
 
   const form = new FormData();
 
   form.append("ProductCode", formData.productCode);
   form.append("ProductName", formData.name);
-  form.append("Quantity", String(formData.quantity));
   form.append("ImportPrice", String(formData.importPrice));
   form.append("PromotionPrice", String(formData.salePrice));
   form.append("ExpiryDate", formData.expiryDate);
