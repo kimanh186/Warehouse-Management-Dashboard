@@ -7,19 +7,29 @@ import Categories from "./pages/Categories";
 import ImportOrders from "./pages/ImportOrders";
 import ExportOrders from "./pages/ExportOrders";
 import Reports from "./pages/Reports";
+import Login from "./pages/Login";
+import ProtectedRoute from "./pages/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
+    path: "/login",
+    element: <Login />,
+  },
+  {
     path: "/",
-    Component: MainLayout,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     children: [
-      { index: true, Component: Dashboard },
-      { path: "products", Component: Products },
-      { path: "suppliers", Component: Suppliers },
-      { path: "categories", Component: Categories },
-      { path: "import-orders", Component: ImportOrders },
-      { path: "export-orders", Component: ExportOrders },
-      { path: "reports", Component: Reports },
+      { index: true, element: <Dashboard /> },
+      { path: "products", element: <Products /> },
+      { path: "suppliers", element: <Suppliers /> },
+      { path: "categories", element: <Categories /> },
+      { path: "import-orders", element: <ImportOrders /> },
+      { path: "export-orders", element: <ExportOrders /> },
+      { path: "reports", element: <Reports /> },
     ],
   },
 ]);

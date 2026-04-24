@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 import Table from "../components/ui/Table";
 import Modal from "../components/ui/Modal";
-import { createImportOrder, getImportOrders, getProducts, getSuppliers } from "../../services/api";
+import { createImportOrder, getImportOrders, getProducts, getSuppliers, deleteImportOrder, markImportOrderPrinted } from "../../services/api";
 import { toast } from "sonner";
 
 interface Supplier {
@@ -13,6 +13,7 @@ interface Supplier {
 interface Product {
   productCode: string;
   productName: string;
+  quantity: number;
 }
 
 interface ImportOrderItem {
@@ -28,13 +29,15 @@ interface ImportOrder {
     supplierName: string;
   };
   details: ImportOrderItem[];
+  isPrinted: boolean;
 }
 
 const columns = [
   { key: "id", label: "Mã phiếu", width: "15%" },
   { key: "createdDate", label: "Ngày tạo", width: "20%" },
   { key: "products", label: "Tên sản phẩm", width: "25%" },
-  { key: "quantity", label: "Tổng SL", width: "15%" },
+  { key: "stock", label: "Tồn kho hiện tại", width: "10%" },
+  { key: "quantity", label: "SL nhập", width: "15%" },
   { key: "money", label: "Tổng tiền", width: "15%" },
   { key: "actions", label: "Hành động", width: "10%" },
 ];
@@ -75,6 +78,21 @@ export default function ImportOrders() {
 
     loadData();
   }, []);
+  const handleDelete = async (id: number) => {
+    if (!confirm("Xóa phiếu này?")) return;
+
+    try {
+      await deleteImportOrder(id);
+
+      setImportOrders(prev =>
+        prev.filter(o => o.id !== id)
+      );
+
+      alert("Xóa phiếu nhập thành công");
+    } catch (err: any) {
+      alert(err.message || "Không thể xóa");
+    }
+  };
 
   const filteredOrders = importOrders.filter((order) => {
     const keyword = search.toLowerCase();
@@ -134,48 +152,55 @@ export default function ImportOrders() {
   };
 
   const handleSaveOrder = async () => {
-  if (selectedSupplierId === "") {
-    alert("⚠️ Vui lòng chọn nhà cung cấp");
-    return;
-  }
+    if (selectedSupplierId === "") {
+      alert(" Vui lòng chọn nhà cung cấp");
+      return;
+    }
 
-  if (orderItems.some((item) => !item.productCode || item.quantity <= 0)) {
-    alert("⚠️ Vui lòng nhập đầy đủ sản phẩm và số lượng");
-    return;
-  }
+    if (orderItems.some((item) => !item.productCode || item.quantity <= 0)) {
+      alert(" Vui lòng nhập đầy đủ sản phẩm và số lượng");
+      return;
+    }
 
-  const body = {
-    supplierId: selectedSupplierId,
-    details: orderItems,
+    const body = {
+      supplierId: selectedSupplierId,
+      details: orderItems,
+    };
+
+    try {
+      await createImportOrder(body);
+
+      alert(" Tạo phiếu nhập thành công"); 
+
+      const refreshed = await getImportOrders();
+
+      setImportOrders(
+        Array.isArray(refreshed) ? refreshed : refreshed.data ?? []
+      );
+
+      setIsCreateModalOpen(false);
+      setSelectedSupplierId("");
+      setOrderItems([
+        {
+          productCode: "",
+          quantity: 0,
+          importPrice: 0,
+        },
+      ]);
+    } catch (error: any) {
+      alert(error?.message || " Không thể tạo phiếu nhập");
+    }
   };
 
-  try {
-    await createImportOrder(body);
-
-    alert("🎉 Tạo phiếu nhập thành công"); // 🔥 THÊM DÒNG NÀY
-
-    const refreshed = await getImportOrders();
-
-    setImportOrders(
-      Array.isArray(refreshed) ? refreshed : refreshed.data ?? []
-    );
-
-    setIsCreateModalOpen(false);
-    setSelectedSupplierId("");
-    setOrderItems([
-      {
-        productCode: "",
-        quantity: 0,
-        importPrice: 0,
-      },
-    ]);
-  } catch (error: any) {
-    alert(error?.message || " Không thể tạo phiếu nhập");
-  }
-};
-
-  const handlePrintOrder = () => {
+  const handlePrintOrder = async () => {
     if (!selectedOrder) return;
+
+    try {
+      await markImportOrderPrinted(selectedOrder.id);
+    } catch (err) {
+      alert("Không thể đánh dấu in");
+      return;
+    }
     alert(" Đang mở phiếu để in...");
 
     const printWindow = window.open("", "_blank", "width=900,height=700");
@@ -372,6 +397,16 @@ export default function ImportOrders() {
             </td>
 
             <td className="px-6 py-4 text-sm text-foreground">
+              {(order.details ?? [])
+                .map((item: ImportOrderItem) => {
+                  const product = products.find(
+                    (p) => p.productCode === item.productCode
+                  );
+
+                  return `${product?.quantity ?? 0}`;
+                })
+                .join(", ")}
+            </td><td className="px-6 py-4 text-sm text-foreground">
               {(order.details ?? []).reduce(
                 (sum: number, item: ImportOrderItem) => sum + item.quantity,
                 0
@@ -395,6 +430,16 @@ export default function ImportOrders() {
                 className="text-primary hover:underline text-sm"
               >
                 Chi tiết
+              </button>
+              <button
+                onClick={() => handleDelete(order.id)}
+                disabled={order.isPrinted}
+                className={`text-sm ml-2 ${order.isPrinted
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-red-600 hover:underline"
+                  }`}
+              >
+                Xóa
               </button>
             </td>
           </tr>

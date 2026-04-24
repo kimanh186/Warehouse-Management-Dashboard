@@ -1,6 +1,16 @@
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, LogOut } from "lucide-react";
 
 export default function Header() {
+  const username = localStorage.getItem("username");
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    localStorage.removeItem("role");
+
+    window.location.href = "/login";
+  };
+
   return (
     <header className="bg-card border-b border-border sticky top-0 z-10">
       <div className="flex items-center justify-between px-6 py-4">
@@ -21,14 +31,26 @@ export default function Header() {
             <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full"></span>
           </button>
 
+          {/* USER */}
           <div className="flex items-center gap-3 pl-4 border-l border-border">
             <div className="text-right">
-              <p className="text-sm font-medium">Admin User</p>
-              <p className="text-xs text-muted-foreground">Quản trị viên</p>
+              <p className="text-sm font-medium">
+                {username || "User"}
+              </p>
             </div>
+
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <User className="w-5 h-5 text-primary-foreground" />
             </div>
+
+            {/* LOGOUT BUTTON */}
+            <button
+              onClick={handleLogout}
+              className="ml-2 p-2 hover:bg-red-100 rounded-lg"
+              title="Đăng xuất"
+            >
+              <LogOut className="w-5 h-5 text-red-500" />
+            </button>
           </div>
         </div>
       </div>

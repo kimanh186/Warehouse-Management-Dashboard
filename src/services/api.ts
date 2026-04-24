@@ -79,40 +79,40 @@ export async function deleteSupplier(id: number) {
 
 // Categories
 export async function getCategories() {
-  const response = await fetch(`${API_URL}/Categories`);
-  return handleResponse(response);
+    const response = await fetch(`${API_URL}/Categories`);
+    return handleResponse(response);
 }
 
 export async function createCategory(category: any) {
-  const response = await fetch(`${API_URL}/Categories`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(category),
-  });
+    const response = await fetch(`${API_URL}/Categories`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(category),
+    });
 
-  return handleResponse(response);
+    return handleResponse(response);
 }
 
 export async function updateCategory(id: number, category: any) {
-  const response = await fetch(`${API_URL}/Categories/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(category),
-  });
+    const response = await fetch(`${API_URL}/Categories/${id}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(category),
+    });
 
-  return handleResponse(response);
+    return handleResponse(response);
 }
 
 export async function deleteCategory(id: number) {
-  const response = await fetch(`${API_URL}/Categories/${id}`, {
-    method: "DELETE",
-  });
+    const response = await fetch(`${API_URL}/Categories/${id}`, {
+        method: "DELETE",
+    });
 
-  return handleResponse(response);
+    return handleResponse(response);
 }
 
 // ==================== Import Orders ====================
@@ -132,7 +132,21 @@ export async function createImportOrder(order: any) {
 
     return handleResponse(response);
 }
+export const deleteImportOrder = async (id: number) => {
+    const response = await fetch(`${API_URL}/ImportOrders/${id}`, {
+        method: "DELETE",
+    });
 
+    return handleResponse(response);
+};
+
+export async function markImportOrderPrinted(id: number) {
+    const response = await fetch(`${API_URL}/ImportOrders/${id}/print`, {
+        method: "PUT",
+    });
+
+    return handleResponse(response);
+}
 // ==================== Export Orders ====================
 export async function getExportOrders() {
     const response = await fetch(`${API_URL}/ExportOrders`);
@@ -192,16 +206,32 @@ export async function getOutOfStockProducts() {
     return handleResponse(response);
 }
 export async function getExportReportByDate(date: string) {
-  const response = await fetch(
-    `${API_URL}/Reports/export-by-date?date=${date}T00:00:00Z`
-  );
-  return handleResponse(response);
+    const response = await fetch(
+        `${API_URL}/Reports/export-by-date?date=${date}T00:00:00Z`
+    );
+    return handleResponse(response);
 }
 
 export async function getExportReportByMonth(month: number, year: number) {
-  const response = await fetch(
-    `${API_URL}/Reports/export-by-month?month=${month}&year=${year}`
-  );
-  return handleResponse(response);
+    const response = await fetch(
+        `${API_URL}/Reports/export-by-month?month=${month}&year=${year}`
+    );
+    return handleResponse(response);
 }
 
+export async function login(username: string, password: string) {
+    const response = await fetch(`${API_URL}/Auth/login`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+    });
+
+    const data = await handleResponse(response);
+
+    // lưu token
+    localStorage.setItem("token", data.token);
+
+    return data;
+}
